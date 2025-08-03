@@ -1,4 +1,4 @@
-!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -9,40 +9,66 @@
     <style>
         body {
             font-family: 'Inter', sans-serif;
+            background: #f0f2f5; /* A slightly softer gray */
+        }
+        .main-container {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 1rem;
+            background: linear-gradient(135deg, #e0e7ff 0%, #f3e8ff 100%);
+        }
+        .card {
+            background-color: white;
+            border-radius: 1.5rem; /* More rounded */
+            box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+            border: 1px solid rgba(0, 0, 0, 0.05);
+            transition: all 0.3s ease-in-out;
         }
         .option-btn {
             transition: all 0.2s ease-in-out;
+            border: 2px solid #e5e7eb;
         }
         .option-btn:hover {
             transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+            border-color: #4f46e5; /* Indigo */
         }
         .correct {
-            background-color: #10B981 !important; /* Green-500 */
+            background-color: #10B981 !important;
             color: white !important;
             border-color: #059669 !important;
         }
         .incorrect {
-            background-color: #EF4444 !important; /* Red-500 */
+            background-color: #EF4444 !important;
             color: white !important;
             border-color: #DC2626 !important;
         }
         .best-answer-highlight {
-            box-shadow: 0 0 15px rgba(16, 185, 129, 0.7);
+            box-shadow: 0 0 20px rgba(16, 185, 129, 0.7);
             border: 2px solid #10B981;
         }
         @keyframes fade-in-up {
-            from {
-                opacity: 0;
-                transform: translateY(20px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
         }
         .animate-fade-in-up {
-            animation: fade-in-up 0.3s ease-out forwards;
+            animation: fade-in-up 0.5s ease-out forwards;
+        }
+        .primary-btn {
+            background-color: #4f46e5; /* Indigo */
+            color: white;
+            font-weight: 600;
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.75rem;
+            transition: all 0.2s ease-in-out;
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+        }
+        .primary-btn:hover {
+            background-color: #4338ca;
+            transform: translateY(-2px);
+            box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
         }
     </style>
 </head>
@@ -276,7 +302,6 @@
                 <div class="bg-white rounded-xl shadow-lg p-6 border-t-8 ${percent >= 80 ? 'border-green-500' : 'border-yellow-500'}">
                     <h3 class="text-2xl font-bold text-center text-gray-800">Quiz Results</h3>
                     <div class="flex items-center justify-center my-4">
-                         <img src="https://storage.googleapis.com/project-avatar-images/a53679dc-2250-47b2-9904-747c11b0e263.png" alt="Learning Icon" class="h-20 w-20 mr-4">
                         <div class="text-5xl font-bold ${percent >= 80 ? 'text-green-600' : 'text-yellow-600'}">${percent}%</div>
                     </div>
                     <p class="text-center text-gray-600">${percent >= 80 ? 'Excellent work! You are on track.' : 'Good effort! Keep reviewing the feedback.'}</p>
@@ -345,27 +370,23 @@
         initializeAppState();
 
     </script>
+    <div class="main-container">
+        <div id="app-container" class="max-w-4xl w-full">
 
-    <div id="app-container" class="max-w-5xl mx-auto p-4 sm:p-6 lg:p-8">
-
-        <!-- Welcome Screen -->
-        <div id="welcome-screen">
-            <div class="text-center bg-white p-10 rounded-xl shadow-lg">
-                <img src="https://storage.googleapis.com/project-avatar-images/a53679dc-2250-47b2-9904-747c11b0e263.png" alt="CETL Prep Icon" class="mx-auto h-32 w-32 mb-4">
-                <h1 class="text-4xl font-bold text-gray-900">CETL Targeted Practice</h1>
+            <!-- Welcome Screen -->
+            <div id="welcome-screen" class="card p-8 sm:p-12 text-center animate-fade-in-up">
+                <h1 class="text-4xl sm:text-5xl font-bold text-gray-800">CETL Targeted Practice</h1>
                 <p class="mt-4 text-lg text-gray-600 max-w-2xl mx-auto">This is a focused practice session based on your notes and previous test results. Let's sharpen these specific skills!</p>
                 <div class="mt-8 flex justify-center">
-                    <button onclick="window.app.startQuiz()" class="bg-blue-600 text-white font-bold py-3 px-8 rounded-lg hover:bg-blue-700 transition-transform transform hover:scale-105">Start 5-Question Quiz</button>
+                    <button onclick="window.app.startQuiz()" class="primary-btn">Start 5-Question Quiz</button>
                 </div>
             </div>
-        </div>
 
-        <!-- Quiz Screen -->
-        <div id="quiz-screen" class="hidden">
-             <div class="bg-white p-8 rounded-xl shadow-lg">
+            <!-- Quiz Screen -->
+            <div id="quiz-screen" class="hidden card p-8 sm:p-12 animate-fade-in-up">
                 <div class="mb-6">
-                    <div class="bg-gray-200 rounded-full h-4">
-                        <div id="progress-bar" class="bg-blue-500 h-4 rounded-full" style="width: 0%;"></div>
+                    <div class="bg-gray-200 rounded-full h-2.5">
+                        <div id="progress-bar" class="bg-indigo-600 h-2.5 rounded-full" style="width: 0%;"></div>
                     </div>
                     <p id="progress-text" class="text-center text-sm mt-2 text-gray-600"></p>
                 </div>
@@ -373,36 +394,33 @@
                     <!-- Question will be injected here -->
                 </div>
             </div>
-        </div>
 
-        <!-- Results Screen -->
-        <div id="results-screen" class="hidden">
-            <div class="bg-white p-8 rounded-xl shadow-lg">
+            <!-- Results Screen -->
+            <div id="results-screen" class="hidden card p-8 sm:p-12 animate-fade-in-up">
                 <div id="badge-container" class="mb-8">
                     <!-- Badge will be injected here -->
                 </div>
                 <div class="mb-8">
-                    <h3 class="text-xl font-bold mb-4">Performance by Domain:</h3>
+                    <h3 class="text-2xl font-bold mb-4 text-gray-800">Performance by Domain:</h3>
                     <div id="domain-feedback-container">
                         <!-- Domain feedback will be injected here -->
                     </div>
                 </div>
-                <div class="p-4 bg-blue-100 border-l-4 border-blue-500 text-blue-700 rounded-md">
+                <div class="p-4 bg-indigo-50 border-l-4 border-indigo-500 text-indigo-800 rounded-r-lg">
                     <p class="font-bold">Study Tip:</p>
                     <p>Take a screenshot of these results to track your progress and identify areas for focused study!</p>
                 </div>
-                <h3 class="text-xl font-bold mt-8 mb-4">Detailed Review:</h3>
+                <h3 class="text-2xl font-bold mt-8 mb-4 text-gray-800">Detailed Review:</h3>
                 <div id="results-container">
                     <!-- Detailed results will be injected here -->
                 </div>
                 <div class="mt-8 flex justify-center">
-                    <button onclick="window.app.startQuiz()" class="bg-blue-600 text-white font-bold py-3 px-8 rounded-lg hover:bg-blue-700">Try Again</button>
+                    <button onclick="window.app.startQuiz()" class="primary-btn">Try Again</button>
                 </div>
             </div>
+            
         </div>
-        
     </div>
 
 </body>
 </html>
-
