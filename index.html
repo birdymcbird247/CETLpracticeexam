@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CETL Interactive Practice Exam</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .option-btn {
+            transition: all 0.2s ease-in-out;
+        }
+        .option-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+        .correct {
+            background-color: #10B981 !important; /* Green-500 */
+            color: white !important;
+            border-color: #059669 !important;
+        }
+        .incorrect {
+            background-color: #EF4444 !important; /* Red-500 */
+            color: white !important;
+            border-color: #DC2626 !important;
+        }
+        .best-answer-highlight {
+            box-shadow: 0 0 15px rgba(16, 185, 129, 0.7);
+            border: 2px solid #10B981;
+        }
+    </style>
+</head>
+<body class="bg-gray-50 text-gray-800">
+
+    <!-- Firestore and Firebase Authentication -->
+    <script type="module">
+        // Firebase Imports
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, setDoc, getDoc, collection, addDoc, getDocs, query, where } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // --- DO NOT EDIT: Firebase Configuration ---
+        const firebaseConfig = typeof __firebase_config !== 'undefined' 
+            ? JSON.parse(__firebase_config) 
+            : { apiKey: "test", authDomain: "test.firebaseapp.com", projectId: "test" };
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-cetl-app';
+
+        // --- App Initialization ---
+        let app, auth, db, userId;
+
+        function initializeFirebase() {
+            try {
+                app = initializeApp(firebaseConfig);
+                auth = getAuth(app);
+                db = getFirestore(app);
+                handleAuthentication();
+            } catch (e) {
+                console.error("Firebase initialization error:", e);
+                document.getElementById('app-container').innerHTML = `<div class="text-red-500 text-center p-4">Error initializing the application. Please refresh the page.</div>`;
+            }
+        }
+        
+        async function handleAuthentication() {
+            onAuthStateChanged(auth, async (user) => {
+                if (user) {
+                    userId = user.uid;
+                    console.log("User is signed in with UID:", userId);
+                    initializeAppState();
+                } else {
+                    try {
+                        await signInAnonymously(auth);
+                    } catch (error) {
+                        console.error("Anonymous sign-in error:", error);
+                    }
+                }
+            });
+        }
+        
+        // --- App State and Logic ---
+        const questionBank = [
+            // Leadership and Vision
+            { domain: "Leadership and Vision", skill: "Strategic Planning", scenario: "A district has just received a significant, one-time grant for 'technology innovation.' The superintendent wants to immediately purchase VR headsets for every high school science classroom. As the CETL, what is your most strategic recommendation?", options: [ { text: "Execute the superintendent's request immediately to show decisive action.", isCorrect: false, feedback: "This is a poor choice. It's reactive and bypasses strategic planning and stakeholder input." }, { text: "Suggest forming a committee of teachers to evaluate different VR headsets.", isCorrect: false, feedback: "This is an okay choice but still focuses on the technology, not the 'why'." }, { text: "Propose a pilot program with a few VR headsets at one school.", isCorrect: true, isBest: false, feedback: "This is a good, practical step but still assumes VR is the right solution." }, { text: "Recommend aligning the grant's use with the district's strategic plan and conducting a needs assessment with instructional leaders.", isCorrect: true, isBest: true, feedback: "This is the best answer. It prioritizes the district's strategic plan and instructional goals over specific technology (Framework B.1, B.2)." } ] },
+            { domain: "Leadership and Vision", skill: "Ethics and Policies", scenario: "The district is considering a new social media policy for staff. The draft policy is very restrictive, prohibiting any mention of the school or students online. What is your primary concern as a CETL?", options: [ { text: "The policy will be difficult to enforce technically.", isCorrect: false, feedback: "While true, this is a technical concern, not a leadership or ethical one." }, { text: "The policy might stifle positive community engagement and modeling of digital citizenship.", isCorrect: true, isBest: true, feedback: "This is the best answer. An overly restrictive policy misses the opportunity to model responsible use and engage the community (Framework C.3, C.10). The goal is to guide, not just prohibit." }, { text: "Teachers will complain about the policy infringing on their personal lives.", isCorrect: false, feedback: "This is a likely outcome but focuses on staff satisfaction rather than the district's strategic goals for communication and digital citizenship." }, { text: "The policy doesn't specify which social media platforms are included.", isCorrect: true, isBest: false, feedback: "This is a good point for policy clarity, but it doesn't address the fundamental flaw in the policy's restrictive approach." } ] },
+            { domain: "Leadership and Vision", skill: "Leading and Creating the Vision", scenario: "During a cabinet meeting, the Director of Facilities presents a plan to install new security cameras that use a proprietary, closed system. As the CETL, what is your most critical contribution to this discussion?", options: [ { text: "Ask about the cost per camera to see if it fits in the budget.", isCorrect: false, feedback: "Cost is important, but it's not the most critical strategic issue here." }, { text: "Explain that your team doesn't have the expertise to manage a proprietary system.", isCorrect: false, feedback: "This focuses on your team's limitations, not the district's overall strategic interests." }, { text: "Advocate for a system that uses open standards to ensure interoperability with other district systems (e.g., student information, emergency notifications) and avoid vendor lock-in.", isCorrect: true, isBest: true, feedback: "This is the best answer. It demonstrates a high-level, systemic view (Framework A.6, B.6) by prioritizing interoperability, scalability, and long-term TCO over a single-department solution." }, { text: "Agree to the plan as long as the facilities department manages the system entirely.", isCorrect: true, isBest: false, feedback: "This is a good way to define roles, but it abdicates your responsibility as the district's technology leader to ensure systems are strategic and interoperable." } ] },
+            
+            // Understanding the Educational Environment
+            { domain: "Understanding the Educational Environment", skill: "Instructional Focus and Professional Learning", scenario: "The district is rolling out a new, complex student data dashboard for teachers. Previous tech rollouts have suffered from low adoption. Which professional development strategy would be most effective?", options: [ { text: "Mandate a one-day, district-wide training session before the school year starts.", isCorrect: false, feedback: "This is a poor choice. A one-size-fits-all session does not align with adult learning theory." }, { text: "Provide a comprehensive online library of video tutorials and user manuals.", isCorrect: false, feedback: "This is an okay option but is passive and lacks collaborative support." }, { text: "Develop a 'train the trainer' model where tech-savvy teachers support their colleagues.", isCorrect: true, isBest: false, feedback: "This is a good strategy for capacity building but can lead to inconsistent delivery." }, { text: "Implement a multi-faceted, job-embedded professional learning plan with peer coaching and personalized pathways.", isCorrect: true, isBest: true, feedback: "This is the best answer. It's experiential, ongoing, and collaborative, aligning with best practices for adult learning (Digital Leap Matrix 4F, 4G)." } ] },
+            { domain: "Understanding the Educational Environment", skill: "Team Building and Staffing", scenario: "Your district is shifting to a 1:1 device model. Your technician team is structured traditionally, with staff assigned to specific buildings. You notice high-performing schools get faster service, while high-need schools have a growing backlog of repairs. What is the best first step to address this?", options: [ { text: "Hire more technicians and assign them to the high-need schools.", isCorrect: false, feedback: "This adds cost without addressing the systemic issue of how the team is structured and deployed." }, { text: "Implement a new ticketing system to better track requests.", isCorrect: false, feedback: "A new tool is okay, but it won't solve a flawed process or inequitable resource allocation." }, { text: "Review the team structure, job descriptions, and deployment data to consider a move to a zone-based or centralized depot repair model that allocates resources based on need, not just geography.", isCorrect: true, isBest: true, feedback: "This is the best answer. It involves data-driven decision-making (Framework B.4, B.7) and evaluating the organizational structure for alignment with new district goals (1:1 model)." }, { text: "Hold a meeting with the technicians to tell them they need to work harder and close more tickets.", isCorrect: true, isBest: false, feedback: "This is a good step for communication but will likely demotivate staff and doesn't address the root cause of the inequity." } ] },
+            { domain: "Understanding the Educational Environment", skill: "Stakeholder Focus", scenario: "A vocal group of parents expresses concerns at a board meeting about the district's use of a new online math program, citing data privacy fears. What is your most effective response?", options: [ { text: "Explain the technical specifications of the software's data encryption in the board meeting.", isCorrect: false, feedback: "This is a poor response. It's overly technical and doesn't address the parents' underlying fears or build trust." }, { text: "Assure them the district follows all laws and move on.", isCorrect: false, feedback: "This is dismissive and fails to engage stakeholders in a meaningful way." }, { text: "Schedule a dedicated parent information night to proactively explain the educational benefits of the tool, the data being collected, how it's protected, and answer all questions in an open forum.", isCorrect: true, isBest: true, feedback: "This is the best answer. It builds relationships, demonstrates transparency, and addresses stakeholder concerns directly and respectfully (Digital Leap Matrix 10D)." }, { text: "Publish a page on the district website with the vendor's privacy policy.", isCorrect: true, isBest: false, feedback: "This is a good, transparent step, but it's passive. A proactive, personal approach like an information night is more effective for building trust." } ] },
+
+            // Managing Technology and Support Resources
+            { domain: "Managing Technology and Support Resources", skill: "Business Management", scenario: "Your network manager states that the district's core network switch is at its end-of-life and needs immediate replacement. This was an unplanned expense. How do you best approach this from a business management perspective?", options: [ { text: "Use emergency funds to purchase the exact same model.", isCorrect: false, feedback: "This is a poor choice. It's a reactive decision that ignores TCO and future scalability." }, { text: "Immediately issue an RFP for a new core switch to get competitive pricing.", isCorrect: false, feedback: "This is an okay step but is premature. It focuses on the 'how' before the 'what'." }, { text: "Analyze the request against the technology roadmap and budget, evaluating capital vs. operational expense and leasing vs. purchasing options.", isCorrect: true, isBest: true, feedback: "This is the best answer. It demonstrates strong business leadership by differentiating between funding types and aligning the purchase with the strategic plan (Framework C.2, C.3, C.4)." }, { text: "Ask the network manager for three quotes and choose the cheapest one.", isCorrect: true, isBest: false, feedback: "This is a good step for fiscal responsibility but lacks strategic depth." } ] },
+            { domain: "Managing Technology and Support Resources", skill: "Data Privacy and Security", scenario: "A popular new educational app is being requested by several teachers. The app's privacy policy is vague about data sharing with third parties. What is the most responsible action for the CETL to take?", options: [ { text: "Deny the request immediately due to the vague privacy policy.", isCorrect: true, isBest: false, feedback: "This is a good, safe answer but may shut down a valuable tool without exploring alternatives." }, { text: "Approve it for a trial but require parents to sign an additional consent form.", isCorrect: false, feedback: "This is a poor choice. It shifts the district's responsibility for data privacy onto parents." }, { text: "Allow teachers to use it with anonymized student data.", isCorrect: false, feedback: "This is an okay but flawed approach that's difficult to enforce and doesn't address metadata collection." }, { text: "Contact the vendor to request a specific, legally-binding data privacy agreement (DPA) that ensures FERPA/COPPA compliance.", isCorrect: true, isBest: true, feedback: "This is the best answer. It's proactive vendor management and ensures the district meets its legal and ethical responsibilities (Framework E.1)." } ] },
+            { domain: "Managing Technology and Support Resources", skill: "Information Technology Management", scenario: "The district's nightly data backup process has failed intermittently for the past two weeks. The cause is unknown. What is the CETL's most immediate priority?", options: [ { text: "Start researching new backup software solutions.", isCorrect: false, feedback: "This jumps to a solution before the problem is understood and doesn't address the immediate risk." }, { text: "Inform the superintendent that there is a potential problem with the backups.", isCorrect: true, isBest: false, feedback: "This is a good communication step, but it's not the most immediate priority. Action should precede or accompany the communication." }, { text: "Immediately implement a temporary, secondary backup solution (e.g., cloud storage, external drives) while the main system is being diagnosed to ensure business continuity.", isCorrect: true, isBest: true, feedback: "This is the best answer. It prioritizes business continuity and disaster recovery (Framework A.6) by mitigating the immediate risk of data loss before solving the long-term problem." }, { text: "Assign a junior technician to monitor the backups each night and restart them if they fail.", isCorrect: false, feedback: "This is a poor, temporary patch that doesn't address the root cause and is not a reliable long-term strategy." } ] },
+            { domain: "Managing Technology and Support Resources", skill: "Data Management", scenario: "The curriculum department wants a new dashboard that shows student performance on state tests, local benchmarks, and daily assignments, pulled from three different systems. What is the most important initial consideration?", options: [ { text: "Which data visualization tool (e.g., Tableau, PowerBI) will make the prettiest charts.", isCorrect: false, feedback: "The final product is important, but the underlying data structure is a more critical initial consideration." }, { text: "How much it will cost to build the dashboard.", isCorrect: false, feedback: "Budget is a key factor, but it's not the primary technical and strategic consideration at the outset." }, { text: "Whether the different data systems have APIs or support interoperability standards (like OneRoster or SIF) to allow for automated, reliable data integration.", isCorrect: true, isBest: true, feedback: "This is the best answer. The project's feasibility, reliability, and long-term maintenance depend on the ability to integrate data effectively (Framework D.3). Without interoperability, the project will rely on manual, error-prone processes." }, { text: "Which project manager from the curriculum department will lead the project.", isCorrect: true, isBest: false, feedback: "This is a good project management step, but it's secondary to understanding the fundamental technical feasibility of the request." } ] },
+            { domain: "Leadership and Vision", skill: "Ethics and Policies", scenario: "A board member forwards you an email from a parent who used a public records request to obtain district emails and is now questioning why the district is paying for so many different software subscriptions. What is the best, most transparent response?", options: [ { text: "Explain that all purchases followed the district's procurement policies.", isCorrect: false, feedback: "This is a defensive, procedural answer that doesn't address the underlying question about value and strategy." }, { text: "Provide a detailed list of all software, its cost, and the department that purchased it.", isCorrect: true, isBest: false, feedback: "This is a good, transparent answer, but it provides data without context. It doesn't explain the 'why'." }, { text: "Develop a public-facing 'Digital Resource Library' that not only lists software but also explains its instructional purpose, the student data it collects, and its alignment with the district's strategic goals.", isCorrect: true, isBest: true, feedback: "This is the best answer. It demonstrates transparency, ethical leadership, and a commitment to communicating the Value of Investment (VOI) for technology resources, turning a challenge into a communication opportunity (Framework A.9, C.3)." }, { text: "Tell the board member that vendor contracts are confidential and cannot be discussed publicly.", isCorrect: false, feedback: "This is a poor choice. It's secretive and will likely increase distrust. While some contract details may be confidential, the overall purpose and cost are matters of public record." } ] },
+            { domain: "Understanding the Educational Environment", skill: "Team Building and Staffing", scenario: "You have been approved to hire a new 'Data Analyst' for the technology team. Which of the following is the most important quality to look for in a candidate for a K-12 environment?", options: [ { text: "Expert-level skills in SQL and database administration.", isCorrect: false, feedback: "Technical skills are important, but they are not the most critical quality for this role in an educational setting." }, { text: "A degree in computer science or a related field.", isCorrect: false, feedback: "A degree is a good credential but doesn't guarantee the candidate has the right skills or mindset for a school district." }, { text: "The ability to communicate complex data stories to non-technical stakeholders (like principals and teachers) to inform instructional practice.", isCorrect: true, isBest: true, feedback: "This is the best answer. In a school district, the primary purpose of data is to improve instruction. A successful analyst must be a translator and a storyteller, not just a technician (Framework B.5, D.2)." }, { text: "Experience working in a large corporate data analysis team.", isCorrect: true, isBest: false, feedback: "This experience is valuable, but the context of K-12 education, with its unique data (e.g., assessments, attendance) and stakeholder needs, is very different from a corporate environment." } ] },
+            { domain: "Managing Technology and Support Resources", skill: "Business Management", scenario: "The district has an opportunity to join a regional purchasing consortium that offers significant discounts on software and hardware. However, it requires a three-year commitment and an annual fee. What is the most important factor to consider before joining?", options: [ { text: "Whether the consortium offers the specific brands of devices the district currently uses.", isCorrect: false, feedback: "This is a practical consideration but focuses on current standards rather than long-term strategic value." }, { text: "How many other districts in the area are members.", isCorrect: false, feedback: "Popularity is not a reliable indicator of whether the consortium is a good fit for your district's specific needs." }, { text: "Whether the consortium's procurement process aligns with the district's own purchasing policies and legal requirements.", isCorrect: true, isBest: false, feedback: "This is a critical due diligence step, but it's a matter of compliance, not the primary strategic driver." }, { text: "Conducting a Total Cost of Ownership (TCO) analysis to determine if the projected savings from the consortium's discounts will exceed the annual fees and the potential cost of being locked into specific solutions for three years.", isCorrect: true, isBest: true, feedback: "This is the best answer. It uses a core business management principle (TCO/VOI) to make a data-driven financial decision, balancing short-term savings against long-term flexibility and strategic alignment (Framework C.3, C.4)." } ] },
+            { domain: "Leadership and Vision", skill: "Strategic Planning", scenario: "Your district's strategic plan calls for 'fostering future-ready skills.' Which of the following technology initiatives best demonstrates strategic alignment with this goal?", options: [ { text: "Implementing a new, more efficient student information system (SIS).", isCorrect: false, feedback: "While important for operations, an SIS is primarily an administrative tool and has limited direct impact on fostering students' future-ready skills." }, { text: "Upgrading the district's Wi-Fi network to the latest standard.", isCorrect: false, feedback: "Infrastructure is a critical enabler, but it is not, by itself, an initiative that fosters student skills. It's a necessary utility, not a learning program." }, { text: "Launching a district-wide K-12 digital citizenship curriculum and creating a student-run tech support help desk.", isCorrect: true, isBest: true, feedback: "This is the best answer. It directly addresses future-ready skills like communication, collaboration, problem-solving, and ethical technology use, moving beyond just providing devices (Framework B.7)." }, { text: "Replacing all teacher laptops that are more than four years old.", isCorrect: true, isBest: false, feedback: "This is a good lifecycle management practice, but providing tools to teachers doesn't automatically translate into fostering skills in students." } ] },
+            { domain: "Understanding the Educational Environment", skill: "Instructional Focus", scenario: "A high school principal wants to create a state-of-the-art 'Innovation Lab' with 3D printers, laser cutters, and robotics kits. She has secured some grant funding but is looking to the technology department for the rest. What is your most important guiding question for the principal?", options: [ { text: "'How will you keep the equipment maintained and supplied after the initial purchase?'", isCorrect: true, isBest: false, feedback: "This is a good, practical question about sustainability (TCO), but it should come after the instructional purpose is established." }, { text: "'Which specific curriculum will this lab support, and how will student learning be assessed?'", isCorrect: true, isBest: true, feedback: "This is the best answer. It puts learning first, requiring the technology to be justified by its role in the curriculum and its impact on student outcomes, not the other way around (Digital Leap Matrix 2E)." }, { text: "'Do you have enough electrical outlets and space to accommodate this equipment?'", isCorrect: false, feedback: "This is a logistical question that, while necessary, is not the most important strategic or instructional consideration." }, { text: "'Have you considered what other high schools are doing with their innovation labs?'", isCorrect: false, feedback: "Looking at other districts is okay for ideas, but the primary focus should be on your own district's specific instructional goals." } ] },
+            { domain: "Managing Technology and Support Resources", skill: "Information Technology Management", scenario: "The district is experiencing a ransomware attack that has encrypted servers. The business continuity plan is activated. What is the most critical first step for the technology team?", options: [ { text: "Immediately begin negotiating with the attackers to determine the ransom amount.", isCorrect: false, feedback: "This is a poor choice. Law enforcement advises against negotiation, and it should not be the first step." }, { text: "Isolate the affected systems from the rest of the network to prevent further spread of the ransomware.", isCorrect: true, isBest: true, feedback: "This is the best answer. Containment is the absolute first priority in any cybersecurity incident to limit the damage (Framework A.6, E.2)." }, { text: "Send a district-wide email to all staff warning them not to open suspicious attachments.", isCorrect: false, feedback: "This is an important communication step, but it is secondary to the immediate technical need to contain the attack." }, { text: "Start restoring data from the most recent clean backup to a new, clean server.", isCorrect: true, isBest: false, feedback: "This is a critical part of the recovery process, but it must happen only after the attack has been contained. Restoring to a compromised network could result in the backups also being encrypted." } ] },
+            { domain: "Leadership and Vision", skill: "Leading and Creating the Vision", scenario: "Your superintendent has asked you to present the new 5-year technology plan to the school board for approval. What is the most important element to include in your presentation?", options: [ { text: "A detailed list of every piece of hardware and software the district plans to purchase each year.", isCorrect: false, feedback: "This is too granular and focuses on the 'what' instead of the 'why'. It can bog the presentation down in minor details." }, { text: "A technical deep-dive into the network architecture and cybersecurity enhancements.", isCorrect: false, feedback: "This level of technical detail is not appropriate for a school board presentation and fails to connect technology to the district's mission." }, { text: "A clear and compelling narrative that connects every major technology initiative directly to the district's strategic goals, student outcomes, and the overall Value of Investment (VOI).", isCorrect: true, isBest: true, feedback: "This is the best answer. It frames technology as a strategic enabler of the district's mission, which is the primary concern of the board. It focuses on the 'why' and the value, not just the technical details (Framework A.1, A.9)." }, { text: "A comparison of your district's technology budget to neighboring districts.", isCorrect: true, isBest: false, feedback: "This provides some context but doesn't explain the strategic reasoning behind your own district's plan. It can lead to unproductive comparisons rather than focusing on your specific needs." } ] },
+            { domain: "Understanding the Educational Environment", skill: "Professional Learning", scenario: "After a new LMS rollout, teacher feedback indicates they are overwhelmed. Which action best demonstrates a commitment to continuous improvement in professional learning?", options: [ { text: "Declare the rollout complete and move on to the next project.", isCorrect: false, feedback: "This ignores valuable feedback and fails the principle of continuous improvement." }, { text: "Survey teachers to gather specific data on their challenges, then use that data to offer targeted, small-group support sessions and create new, relevant resources.", isCorrect: true, isBest: true, feedback: "This is the best answer. It uses data to inform action, provides personalized support, and demonstrates that professional learning is an ongoing process, not a one-time event (Digital Leap Matrix 4H)." }, { text: "Tell the teachers that change is hard and they will get used to it over time.", isCorrect: false, feedback: "This is dismissive and damaging to the culture of trust and collaboration." }, { text: "Offer a voluntary Q&A session after school for anyone who is still struggling.", isCorrect: true, isBest: false, feedback: "This is a good, supportive step, but it is reactive. A proactive approach based on specific data from all users is more effective and equitable." } ] },
+            { domain: "Managing Technology and Support Resources", skill: "Data Privacy and Security", scenario: "An external researcher has requested a large dataset of anonymized student assessment scores for an academic study. What is the most important prerequisite before fulfilling this request?", options: [ { text: "Getting approval from the superintendent.", isCorrect: false, feedback: "Approval is necessary, but it is not the most important prerequisite. The superintendent will rely on your expertise to ensure the proper steps are taken first." }, { text: "Ensuring the district has a formal, board-approved research agreement or MOU that governs data sharing, defines the scope of use, and outlines security protocols.", isCorrect: true, isBest: true, feedback: "This is the best answer. A formal agreement and policy provide the legal and ethical framework to protect the district and its students, ensuring compliance and responsible data stewardship (Framework E.1, Digital Leap Matrix 3G)." }, { text: "Having the researcher sign a simple non-disclosure agreement (NDA).", isCorrect: false, feedback: "An NDA is insufficient. A formal research agreement specific to student data is required to address the complexities of FERPA and other regulations." }, { text: "Confirming that the data has been properly de-identified by removing names and student ID numbers.", isCorrect: true, isBest: false, feedback: "This is a critical technical step, but it must be done within the framework of a formal policy and agreement. De-identification alone is not enough." } ] },
+            { domain: "Leadership and Vision", skill: "Strategic Planning", scenario: "The school board has mandated a new 'environmental responsibility' initiative. How can the technology department best contribute to this strategic goal?", options: [ { text: "Create posters encouraging staff to turn off their computers at night.", isCorrect: false, feedback: "This is a minor, low-impact action that doesn't leverage the department's unique capabilities." }, { text: "Develop and implement a district-wide policy for responsible e-waste disposal and a power management plan that automatically puts computers to sleep after hours.", isCorrect: true, isBest: true, feedback: "This is the best answer. It's a systemic, policy-based approach that leverages technology to achieve a strategic goal, demonstrating leadership and producing measurable results (Framework C.6)." }, { text: "Switch to buying only laptops instead of desktops because they use less power.", isCorrect: false, feedback: "This might be part of a larger strategy, but it's a single tactic that doesn't consider the full lifecycle or other factors like TCO and user needs." }, { text: "Suggest that the initiative is the responsibility of the facilities department.", isCorrect: true, isBest: false, feedback: "While facilities has a role, this response abdicates the technology department's shared responsibility and misses an opportunity to demonstrate strategic leadership." } ] },
+            { domain: "Understanding the Educational Environment", skill: "Team Building", scenario: "Your instructional technology and infrastructure teams operate in silos, leading to conflicts where curriculum leaders request new software that the network can't support. What is the best long-term solution?", options: [ { text: "Tell the instructional team they must get all requests approved by the infrastructure team first.", isCorrect: false, feedback: "This creates a bottleneck and reinforces the adversarial relationship rather than fostering collaboration." }, { text: "Hire a project manager to coordinate between the two teams.", isCorrect: false, feedback: "A project manager can help, but this doesn't fix the underlying structural problem of the teams working in silos." }, { text: "Reorganize the department to create cross-functional teams, where instructional and technical staff work together on projects from the beginning, guided by shared goals and a common governance process.", isCorrect: true, isBest: true, feedback: "This is the best answer. It addresses the root cause by changing the organizational structure to promote collaboration, shared ownership, and proactive planning (Framework B.1, Digital Leap Matrix 5B)." }, { text: "Hold a joint meeting every month for the two teams to share updates on their respective projects.", isCorrect: true, isBest: false, feedback: "This is a good first step for improving communication, but it is not a long-term solution for integrating their work processes." } ] },
+            { domain: "Managing Technology and Support Resources", skill: "Business Management", scenario: "A vendor offers to provide the district with 'free' classroom management software, but the terms require the district to share student directory information for marketing purposes. How should you evaluate this offer?", options: [ { text: "Accept the offer immediately as it saves the district money.", isCorrect: false, feedback: "This is a poor choice. 'Free' is not free if it compromises student privacy. This violates FERPA and basic ethical principles." }, { text: "Politely decline the offer, explaining that district policy and federal law (FERPA) prohibit sharing student data for marketing purposes.", isCorrect: true, isBest: true, feedback: "This is the best answer. It demonstrates ethical leadership and a firm understanding of legal compliance, prioritizing student privacy over perceived cost savings (Framework C.1, E.1)." }, { text: "Ask the vendor if they can provide the software without the data sharing requirement.", isCorrect: true, isBest: false, feedback: "This is a good negotiation step, but the initial offer is so problematic that a simple refusal is the most direct and appropriate response." }, { text: "Forward the offer to the legal department to review the terms.", isCorrect: false, feedback: "While legal review is good practice, the CETL should have the foundational knowledge of FERPA to immediately recognize this as an unacceptable offer." } ] },
+            { domain: "Leadership and Vision", skill: "Ethics and Policies", scenario: "A student is using a personal hotspot to bypass the school's internet filter to access gaming websites. Which is the most appropriate and educational response?", options: [ { text: "Confiscate the student's device and hotspot for the rest of the school year.", isCorrect: false, feedback: "This is a purely punitive measure that doesn't address the educational aspect of the issue." }, { text: "Update the Acceptable Use Policy (AUP) to explicitly ban personal hotspots.", isCorrect: true, isBest: false, feedback: "This is a good policy step, but it's reactive and doesn't address the immediate student behavior." }, { text: "Have a conversation with the student about digital citizenship, the purpose of the filter, and the responsible use of technology, in addition to applying the school's stated disciplinary policy for AUP violations.", isCorrect: true, isBest: true, feedback: "This is the best answer. It combines a policy-based consequence with a crucial educational opportunity, which is the ultimate goal of digital citizenship education (Framework C.3)." }, { text: "Invest in technology that can detect and block unauthorized hotspots on campus.", isCorrect: false, feedback: "This is a technical 'arms race' solution. While potentially useful, it's expensive and doesn't address the student's behavior or understanding." } ] },
+            { domain: "Understanding the Educational Environment", skill: "Instructional Focus", scenario: "The school board wants to see a higher return on its investment in 1:1 student devices. Which metric would be the most meaningful to share?", options: [ { text: "The number of support tickets closed per month.", isCorrect: false, feedback: "This is an operational metric for the IT department, not a measure of instructional impact." }, { text: "The percentage of students who take their devices home each night.", isCorrect: false, feedback: "This metric doesn't provide any insight into how the devices are being used for learning." }, { text: "Examples and data from a technology-use framework (like SAMR or TIM) showing a shift from using devices for substitution (e.g., typing an essay) to redefinition (e.g., collaborating on a multimedia project with global partners).", isCorrect: true, isBest: true, feedback: "This is the best answer. It uses a recognized instructional framework to measure the quality and depth of technology integration, directly connecting the device to changes in teaching and learning (Framework B.7)." }, { text: "The average daily screen time per student.", isCorrect: true, isBest: false, feedback: "This is a quantitative metric, but it lacks qualitative context. High screen time could be productive or unproductive; the number itself is not meaningful without understanding the nature of the use." } ] },
+            { domain: "Managing Technology and Support Resources", skill: "Communication Systems", scenario: "A snowstorm is forecast overnight, and a decision about a school closure will be made at 5:00 AM. What is the most important consideration for the district's communication plan?", options: [ { text: "Posting the announcement on the district's website.", isCorrect: false, feedback: "This is a good step, but it's passive. Parents may not think to check the website at 5:00 AM." }, { text: "Ensuring the plan uses multiple, redundant communication channels (e.g., SMS text, voice call, mobile app push notification, social media) to reach all stakeholders as quickly and reliably as possible.", isCorrect: true, isBest: true, feedback: "This is the best answer. In a time-sensitive emergency, relying on a single channel is risky. A multi-modal approach ensures the message gets through to everyone, regardless of their preferred communication method or technical access (Framework B.1, B.3)." }, { text: "Sending an email to all staff and parents.", isCorrect: false, feedback: "Email is a good channel, but it's not immediate enough for an early morning emergency notification. Many people may not see it in time." }, { text: "Notifying the local TV news stations to run a crawl at the bottom of the screen.", isCorrect: true, isBest: false, feedback: "This is a traditional and still useful method, but the district should not rely solely on third-party media. Direct communication is more reliable and faster." } ] }
+        ];
+
+        let currentQuizQuestions = [];
+        let currentQuestionIndex = 0;
+        let score = 0;
+        let quizData = [];
+
+        function showScreen(screenId) {
+            document.getElementById('welcome-screen').classList.add('hidden');
+            document.getElementById('quiz-screen').classList.add('hidden');
+            document.getElementById('results-screen').classList.add('hidden');
+            document.getElementById('progress-screen').classList.add('hidden');
+            document.getElementById(screenId).classList.remove('hidden');
+        }
+
+        function startQuiz() {
+            currentQuestionIndex = 0;
+            score = 0;
+            quizData = [];
+            
+            // Shuffle the entire bank and take the first 4 questions
+            const shuffled = [...questionBank].sort(() => 0.5 - Math.random());
+            currentQuizQuestions = shuffled.slice(0, 4);
+            
+            displayQuestion();
+            showScreen('quiz-screen');
+        }
+
+        function displayQuestion() {
+            if (currentQuestionIndex < currentQuizQuestions.length) {
+                const question = currentQuizQuestions[currentQuestionIndex];
+                const questionContainer = document.getElementById('question-container');
+                
+                let optionsHtml = '';
+                question.options.forEach((option, index) => {
+                    optionsHtml += `<button onclick="window.app.selectAnswer(${index})" class="option-btn w-full text-left p-4 bg-white border-2 border-gray-300 rounded-lg shadow-sm hover:bg-blue-50 hover:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-500">${option.text}</button>`;
+                });
+
+                questionContainer.innerHTML = `
+                    <div class="mb-4">
+                        <p class="text-sm font-semibold text-blue-600">${question.domain} > ${question.skill}</p>
+                        <h2 class="text-2xl font-bold mt-2">${question.scenario}</h2>
+                    </div>
+                    <div class="space-y-4">${optionsHtml}</div>
+                `;
+                document.getElementById('progress-bar').style.width = `${((currentQuestionIndex + 1) / currentQuizQuestions.length) * 100}%`;
+                document.getElementById('progress-text').innerText = `Question ${currentQuestionIndex + 1} of ${currentQuizQuestions.length}`;
+
+            } else {
+                showResults();
+            }
+        }
+
+        function selectAnswer(selectedIndex) {
+            const question = currentQuizQuestions[currentQuestionIndex];
+            const selectedOption = question.options[selectedIndex];
+            const isBest = selectedOption.isBest;
+
+            if (isBest) {
+                score++;
+            }
+
+            quizData.push({
+                domain: question.domain,
+                skill: question.skill,
+                question: question.scenario,
+                selectedAnswer: selectedOption.text,
+                correctAnswer: question.options.find(o => o.isBest).text,
+                isBest: isBest
+            });
+
+            showFeedback(selectedIndex);
+        }
+
+        function showFeedback(selectedIndex) {
+            const question = currentQuizQuestions[currentQuestionIndex];
+            const options = document.querySelectorAll('#question-container .option-btn');
+            
+            options.forEach((btn, index) => {
+                btn.disabled = true;
+                const optionData = question.options[index];
+                if (optionData.isBest) {
+                    btn.classList.add('correct', 'best-answer-highlight');
+                } else if (index === selectedIndex) {
+                    btn.classList.add('incorrect');
+                }
+            });
+
+            const feedbackHtml = `
+                <div id="feedback-modal" class="fixed inset-0 bg-gray-800 bg-opacity-75 flex items-center justify-center p-4 z-50">
+                    <div class="bg-white rounded-lg shadow-xl p-8 max-w-2xl w-full animate-fade-in-up">
+                        <h3 class="text-2xl font-bold mb-4">${question.options[selectedIndex].isBest ? "Correct!" : "Review this Concept"}</h3>
+                        <div class="mb-4 p-4 rounded-lg ${question.options[selectedIndex].isBest ? 'bg-green-100' : 'bg-red-100'}">
+                            <p class="font-bold">Your Answer:</p>
+                            <p>${question.options[selectedIndex].text}</p>
+                            <p class="mt-2 text-sm">${question.options[selectedIndex].feedback}</p>
+                        </div>
+                        ${!question.options[selectedIndex].isBest ? `
+                        <div class="mb-6 p-4 rounded-lg bg-green-100 border border-green-300">
+                            <p class="font-bold text-green-800">The Best Answer:</p>
+                            <p class="text-gray-800">${question.options.find(o => o.isBest).text}</p>
+                            <p class="mt-2 text-sm text-gray-700">${question.options.find(o => o.isBest).feedback}</p>
+                        </div>` : ''}
+                        <button onclick="window.app.nextQuestion()" class="w-full bg-blue-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-blue-700 transition-colors">Next Question</button>
+                    </div>
+                </div>
+            `;
+            document.body.insertAdjacentHTML('beforeend', feedbackHtml);
+        }
+
+        function nextQuestion() {
+            const modal = document.getElementById('feedback-modal');
+            if (modal) {
+                modal.remove();
+            }
+            currentQuestionIndex++;
+            displayQuestion();
+        }
+
+        async function showResults() {
+            await saveQuizAttempt();
+            const resultsContainer = document.getElementById('results-container');
+            resultsContainer.innerHTML = `
+                <h2 class="text-3xl font-bold text-center mb-2">Quiz Complete!</h2>
+                <p class="text-center text-xl text-gray-600 mb-6">You scored ${score} out of ${currentQuizQuestions.length}</p>
+            `;
+            quizData.forEach(result => {
+                resultsContainer.innerHTML += `
+                    <div class="border-t py-4">
+                        <p class="font-semibold">${result.question}</p>
+                        <p class="text-sm mt-2 ${result.isBest ? 'text-green-600' : 'text-red-600'}">Your answer: ${result.selectedAnswer}</p>
+                        ${!result.isBest ? `<p class="text-sm mt-1 text-blue-600">Best answer: ${result.correctAnswer}</p>` : ''}
+                    </div>
+                `;
+            });
+            showScreen('results-screen');
+        }
+
+        async function saveQuizAttempt() {
+            if (!db || !userId) {
+                console.error("Firestore not initialized or user not authenticated. Cannot save data.");
+                return;
+            }
+            try {
+                const attemptData = {
+                    userId: userId,
+                    timestamp: new Date(),
+                    score: score,
+                    totalQuestions: currentQuizQuestions.length,
+                    details: quizData
+                };
+                const docRef = await addDoc(collection(db, `artifacts/${appId}/users/${userId}/quizAttempts`), attemptData);
+                console.log("Quiz attempt saved with ID: ", docRef.id);
+            } catch (error) {
+                console.error("Error saving quiz attempt: ", error);
+            }
+        }
+
+        async function showProgress() {
+            if (!db || !userId) {
+                alert("Cannot load progress. User not authenticated.");
+                return;
+            }
+            showScreen('progress-screen');
+            const progressContainer = document.getElementById('progress-chart-container');
+            progressContainer.innerHTML = `<p class="text-center">Loading progress data...</p>`;
+            
+            try {
+                const q = query(collection(db, `artifacts/${appId}/users/${userId}/quizAttempts`));
+                const querySnapshot = await getDocs(q);
+
+                if (querySnapshot.empty) {
+                    progressContainer.innerHTML = `<p class="text-center">No practice history found. Take a quiz to see your progress!</p>`;
+                    return;
+                }
+
+                let attempts = [];
+                querySnapshot.forEach(doc => {
+                    attempts.push(doc.data());
+                });
+                attempts.sort((a,b) => a.timestamp.toDate() - b.timestamp.toDate());
+
+                const domainData = {
+                    "Leadership and Vision": { correct: 0, total: 0 },
+                    "Understanding the Educational Environment": { correct: 0, total: 0 },
+                    "Managing Technology and Support Resources": { correct: 0, total: 0 }
+                };
+
+                attempts.forEach(attempt => {
+                    attempt.details.forEach(detail => {
+                        if (domainData[detail.domain]) {
+                            domainData[detail.domain].total++;
+                            if (detail.isBest) {
+                                domainData[detail.domain].correct++;
+                            }
+                        }
+                    });
+                });
+
+                progressContainer.innerHTML = `
+                    <div class="grid md:grid-cols-2 gap-8">
+                        <div>
+                            <h3 class="text-xl font-bold mb-4 text-center">Overall Performance</h3>
+                            <canvas id="overall-chart"></canvas>
+                        </div>
+                        <div>
+                            <h3 class="text-xl font-bold mb-4 text-center">Performance by Domain</h3>
+                            <canvas id="domain-chart"></canvas>
+                        </div>
+                    </div>
+                `;
+
+                new Chart(document.getElementById('overall-chart'), {
+                    type: 'line',
+                    data: {
+                        labels: attempts.map((a, i) => `Attempt ${i+1}`),
+                        datasets: [{
+                            label: 'Score (%)',
+                            data: attempts.map(a => (a.score / a.totalQuestions) * 100),
+                            borderColor: '#3B82F6',
+                            backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                            fill: true,
+                            tension: 0.1
+                        }]
+                    }
+                });
+
+                new Chart(document.getElementById('domain-chart'), {
+                    type: 'bar',
+                    data: {
+                        labels: Object.keys(domainData),
+                        datasets: [{
+                            label: 'Accuracy (%)',
+                            data: Object.values(domainData).map(d => d.total > 0 ? (d.correct / d.total) * 100 : 0),
+                            backgroundColor: ['#3B82F6', '#10B981', '#F97316']
+                        }]
+                    },
+                    options: {
+                        indexAxis: 'y',
+                        scales: { x: { beginAtZero: true, max: 100 } }
+                    }
+                });
+
+            } catch (error) {
+                console.error("Error fetching progress: ", error);
+                progressContainer.innerHTML = `<p class="text-center text-red-500">Could not load progress data.</p>`;
+            }
+        }
+
+        function initializeAppState() {
+            showScreen('welcome-screen');
+        }
+
+        // Expose functions to global scope for onclick handlers
+        window.app = {
+            startQuiz,
+            selectAnswer,
+            nextQuestion,
+            showProgress,
+            showHome: initializeAppState
+        };
+
+        // Initialize the app
+        initializeFirebase();
+
+    </script>
+
+    <div id="app-container" class="max-w-5xl mx-auto p-4 sm:p-6 lg:p-8">
+
+        <!-- Welcome Screen -->
+        <div id="welcome-screen">
+            <div class="text-center bg-white p-10 rounded-xl shadow-lg">
+                <h1 class="text-4xl font-bold text-gray-900">CETL® Interactive Practice Exam</h1>
+                <p class="mt-4 text-lg text-gray-600 max-w-2xl mx-auto">Welcome! This tool is designed to help you prepare for the Certified Education Technology Leader exam with scenario-based questions that test your practical knowledge.</p>
+                <div class="mt-8 flex flex-col sm:flex-row justify-center gap-4">
+                    <button onclick="window.app.startQuiz()" class="bg-blue-600 text-white font-bold py-3 px-8 rounded-lg hover:bg-blue-700 transition-transform transform hover:scale-105">Start New 4-Question Quiz</button>
+                    <button onclick="window.app.showProgress()" class="bg-gray-200 text-gray-800 font-bold py-3 px-8 rounded-lg hover:bg-gray-300 transition-transform transform hover:scale-105">View My Progress</button>
+                </div>
+                 <p class="mt-6 text-xs text-gray-500">Your progress is saved automatically and privately. The quiz will randomly select 4 questions from a larger bank.</p>
+            </div>
+        </div>
+
+        <!-- Quiz Screen -->
+        <div id="quiz-screen" class="hidden">
+             <div class="bg-white p-8 rounded-xl shadow-lg">
+                <div class="mb-6">
+                    <div class="bg-gray-200 rounded-full h-4">
+                        <div id="progress-bar" class="bg-blue-500 h-4 rounded-full" style="width: 0%;"></div>
+                    </div>
+                    <p id="progress-text" class="text-center text-sm mt-2 text-gray-600"></p>
+                </div>
+                <div id="question-container">
+                    <!-- Question will be injected here -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Results Screen -->
+        <div id="results-screen" class="hidden">
+            <div class="bg-white p-8 rounded-xl shadow-lg">
+                <div id="results-container">
+                    <!-- Results will be injected here -->
+                </div>
+                <div class="mt-8 flex flex-col sm:flex-row justify-center gap-4">
+                    <button onclick="window.app.startQuiz()" class="bg-blue-600 text-white font-bold py-3 px-8 rounded-lg hover:bg-blue-700">Take Another Quiz</button>
+                    <button onclick="window.app.showProgress()" class="bg-gray-200 text-gray-800 font-bold py-3 px-8 rounded-lg hover:bg-gray-300">View My Progress</button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Progress Screen -->
+        <div id="progress-screen" class="hidden">
+            <div class="bg-white p-8 rounded-xl shadow-lg">
+                <h2 class="text-3xl font-bold text-center mb-6">Your Progress Dashboard</h2>
+                <div id="progress-chart-container">
+                    <!-- Charts will be injected here -->
+                </div>
+                <div class="mt-8 text-center">
+                    <button onclick="window.app.showHome()" class="bg-blue-600 text-white font-bold py-3 px-8 rounded-lg hover:bg-blue-700">Back to Home</button>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+</body>
+</html>
